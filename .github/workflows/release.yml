@@ -11,6 +11,9 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      version: ${{ steps.changesets.outputs.publishedPackages && fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
     permissions:
       contents: write
       pull-requests: write
@@ -41,48 +44,76 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Multi-Platform Binaries
-        if: steps.changesets.outputs.published == 'true'
-        run: |
-          # Build for different platforms
-          # Darwin (macOS) ARM64
-          bun build src/index.tsx --compile --target=bun-darwin-arm64 --outfile dist/ggtui-darwin-arm64
-          
-          # Darwin (macOS) x64
-          bun build src/index.tsx --compile --target=bun-darwin-x64 --outfile dist/ggtui-darwin-x64
-          
-          # Linux x64
-          bun build src/index.tsx --compile --target=bun-linux-x64 --outfile dist/ggtui-linux-x64
-          
-          # Linux ARM64
-          bun build src/index.tsx --compile --target=bun-linux-arm64 --outfile dist/ggtui-linux-arm64
+  build:
+    name: Build Binaries
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: darwin-arm64
+            artifact: ggtui-darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+            artifact: ggtui-darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+            artifact: ggtui-linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
 
-      - name: Create Platform Archives
-        if: steps.changesets.outputs.published == 'true'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Build Binary
+        run: bun run build
+
+      - name: Rename Binary
+        run: mv dist/ggtui dist/${{ matrix.artifact }}
+
+      - name: Create Archive
         run: |
           cd dist
-          
-          # Create tarballs for each platform
-          tar -czf ggtui-darwin-arm64.tar.gz ggtui-darwin-arm64
-          tar -czf ggtui-darwin-x64.tar.gz ggtui-darwin-x64
-          tar -czf ggtui-linux-x64.tar.gz ggtui-linux-x64
-          tar -czf ggtui-linux-arm64.tar.gz ggtui-linux-arm64
-          
-          # Generate SHA256 checksums
-          sha256sum *.tar.gz > SHA256SUMS
-          
+          tar -czf ${{ matrix.artifact }}.tar.gz ${{ matrix.artifact }}
           cd ..
 
-      - name: Upload Release Assets
-        if: steps.changesets.outputs.published == 'true'
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}.tar.gz
+
+  upload-assets:
+    name: Upload Release Assets
+    needs: [release, build]
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd artifacts
+          find . -name "*.tar.gz" -exec sha256sum {} \; > SHA256SUMS
+          cd ..
+
+      - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/ggtui-darwin-arm64.tar.gz
-            dist/ggtui-darwin-x64.tar.gz
-            dist/ggtui-linux-x64.tar.gz
-            dist/ggtui-linux-arm64.tar.gz
-            dist/SHA256SUMS
-          tag_name: v${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
+            artifacts/*/*.tar.gz
+            artifacts/SHA256SUMS
+          tag_name: v${{ needs.release.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
