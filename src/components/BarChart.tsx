@@ -1,3 +1,5 @@
+import { colors } from "../theme";
+
 interface BarChartProps {
   data: number[];
   height?: number;
@@ -37,14 +39,14 @@ export function BarChart({
   data,
   height = 8,
   width,
-  color = "#4A9EFF",
+  color = colors.chart.primary,
   showLabels = false,
   labels = [],
 }: BarChartProps) {
   if (data.length === 0) {
     return (
       <box height={height}>
-        <text fg="#666666" content="No data" />
+        <text fg={colors.text.muted} content="No data" />
       </box>
     );
   }
@@ -54,7 +56,7 @@ export function BarChart({
   const barWidth = Math.max(1, Math.floor(chartWidth / data.length));
 
   const colorLight = color;
-  const colorDark = interpolateColor(color, "#1a3a5c", 0.4);
+  const colorDark = interpolateColor(color, colors.background.tertiary, 0.4);
 
   const rows: BarSegment[][] = [];
 
@@ -100,7 +102,7 @@ export function BarChart({
           {labels.map((label, i) => (
             <text
               key={i}
-              fg="#666666"
+              fg={colors.text.muted}
               content={label.padEnd(barWidth * Math.ceil(data.length / labels.length))}
             />
           ))}
@@ -116,9 +118,9 @@ interface MiniBarChartProps {
   color?: string;
 }
 
-export function MiniBarChart({ data, width = 20, color = "#4A9EFF" }: MiniBarChartProps) {
+export function MiniBarChart({ data, width = 20, color = colors.chart.primary }: MiniBarChartProps) {
   if (data.length === 0) {
-    return <text fg="#666666" content={" ".repeat(width)} />;
+    return <text fg={colors.text.muted} content={" ".repeat(width)} />;
   }
 
   const maxValue = Math.max(...data, 1);

@@ -1,16 +1,95 @@
 import { createCliRenderer } from "@opentui/core";
 import { createRoot, useKeyboard, useTerminalDimensions } from "@opentui/react";
-import { useEffect, useState } from "react";
-import { getGitStats, formatDate, type GitStats } from "./git";
-import { BarChart } from "./components/BarChart";
-import { ContributorCard } from "./components/ContributorCard";
+import { useEffect, useState, useMemo } from "react";
+import { getGitStats, type GitStats, type WeeklyData } from "./git";
+import { colors } from "./theme";
+import {
+  Sidebar,
+  TOTAL_SIDEBAR_OPTIONS,
+  Header,
+  CommitsChart,
+  ContributorCard,
+  type PeriodFilter,
+  type SortBy,
+} from "./components";
+import { defaultKeybinds, matchKeybind, type ParsedKey } from "./keybinds";
 
 const repoPath = process.argv[2] || ".";
+
+function filterByPeriod<T extends { weekStart: Date }>(data: T[], period: PeriodFilter): T[] {
+  if (period === "all") return data;
+
+  const now = new Date();
+  let cutoff: Date;
+
+  switch (period) {
+    case "week":
+      cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case "month":
+      cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case "year":
+      cutoff = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      return data;
+  }
+
+  return data.filter((d) => d.weekStart >= cutoff);
+}
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day;
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addWeeks(date: Date, weeks: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + weeks * 7);
+  return d;
+}
+
+function padWeeklyDataToNow(weeklyData: WeeklyData[], now: Date): WeeklyData[] {
+  if (weeklyData.length === 0) return weeklyData;
+
+  const start = getWeekStart(weeklyData[0].weekStart);
+  const end = getWeekStart(now);
+
+  const byKey = new Map<string, WeeklyData>();
+  for (const w of weeklyData) {
+    byKey.set(getWeekStart(w.weekStart).toISOString(), w);
+  }
+
+  const padded: WeeklyData[] = [];
+  for (let cursor = start; cursor.getTime() <= end.getTime(); cursor = addWeeks(cursor, 1)) {
+    const key = cursor.toISOString();
+    const existing = byKey.get(key);
+    padded.push(
+      existing ?? {
+        weekStart: new Date(cursor),
+        commits: 0,
+        additions: 0,
+        deletions: 0,
+      }
+    );
+  }
+
+  return padded;
+}
 
 function App() {
   const [stats, setStats] = useState<GitStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<PeriodFilter>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("commits");
+  const [sidebarFocused, setSidebarFocused] = useState(false);
+  const [sidebarIndex, setSidebarIndex] = useState(0);
   const dimensions = useTerminalDimensions();
 
   useEffect(() => {
@@ -25,122 +104,198 @@ function App() {
       });
   }, []);
 
+  const filteredData = useMemo(() => {
+    if (!stats) return null;
+
+    const filteredWeekly = filterByPeriod(stats.weeklyData, period);
+    const chartWeekly = period === "all" ? padWeeklyDataToNow(filteredWeekly, new Date()) : filteredWeekly;
+
+    const contributorStats = new Map<
+      string,
+      {
+        name: string;
+        email: string;
+        commits: number;
+        additions: number;
+        deletions: number;
+        weeklyCommits: WeeklyData[];
+      }
+    >();
+
+    for (const contributor of stats.contributors) {
+      const filteredWeeks = filterByPeriod(contributor.weeklyCommits, period);
+      if (filteredWeeks.length === 0) continue;
+
+      const totals = filteredWeeks.reduce(
+        (acc, w) => ({
+          commits: acc.commits + w.commits,
+          additions: acc.additions + w.additions,
+          deletions: acc.deletions + w.deletions,
+        }),
+        { commits: 0, additions: 0, deletions: 0 }
+      );
+
+      contributorStats.set(contributor.email || contributor.name, {
+        name: contributor.name,
+        email: contributor.email,
+        commits: totals.commits,
+        additions: totals.additions,
+        deletions: totals.deletions,
+        weeklyCommits: filteredWeeks,
+      });
+    }
+
+    const sortedContributors = Array.from(contributorStats.values()).sort((a, b) => {
+      switch (sortBy) {
+        case "commits":
+          return b.commits - a.commits;
+        case "additions":
+          return b.additions - a.additions;
+        case "deletions":
+          return b.deletions - a.deletions;
+        default:
+          return b.commits - a.commits;
+      }
+    });
+
+    return {
+      weeklyData: chartWeekly,
+      contributors: sortedContributors,
+    };
+  }, [stats, period, sortBy]);
+
   useKeyboard((key) => {
-    if (key.name === "q" || (key.ctrl && key.name === "c")) {
+    const parsedKey: ParsedKey = {
+      name: key.name,
+      ctrl: key.ctrl || false,
+      shift: key.shift || false,
+      meta: key.meta || false,
+    };
+
+    if (matchKeybind(parsedKey, defaultKeybinds.quit)) {
       process.exit(0);
+    }
+
+    if (matchKeybind(parsedKey, defaultKeybinds.toggleSidebar)) {
+      setSidebarFocused((prev) => !prev);
+    }
+
+    if (sidebarFocused) {
+      if (matchKeybind(parsedKey, defaultKeybinds.navigateUp)) {
+        setSidebarIndex((prev) => Math.max(0, prev - 1));
+      } else if (matchKeybind(parsedKey, defaultKeybinds.navigateDown)) {
+        setSidebarIndex((prev) => Math.min(TOTAL_SIDEBAR_OPTIONS - 1, prev + 1));
+      } else if (matchKeybind(parsedKey, defaultKeybinds.select)) {
+        if (sidebarIndex < 4) {
+          const periods: PeriodFilter[] = ["all", "year", "month", "week"];
+          setPeriod(periods[sidebarIndex]);
+        } else {
+          const sorts: SortBy[] = ["commits", "additions", "deletions"];
+          setSortBy(sorts[sidebarIndex - 4]);
+        }
+      }
     }
   });
 
   if (loading) {
     return (
-      <box alignItems="center" justifyContent="center" flexGrow={1}>
-        <text fg="#8B949E" content="Loading git statistics..." />
+      <box alignItems="center" justifyContent="center" flexGrow={1} backgroundColor={colors.background.primary}>
+        <box flexDirection="column" alignItems="center">
+          <text fg={colors.accent.blue} content="◐ Loading git statistics..." />
+        </box>
       </box>
     );
   }
 
   if (error) {
     return (
-      <box alignItems="center" justifyContent="center" flexGrow={1} flexDirection="column">
-        <text fg="#F85149" content={`Error: ${error}`} />
-        <text fg="#8B949E" content="Make sure you're in a git repository" />
+      <box
+        alignItems="center"
+        justifyContent="center"
+        flexGrow={1}
+        flexDirection="column"
+        backgroundColor={colors.background.primary}
+      >
+        <text fg={colors.state.error} content={`✖ Error: ${error}`} />
+        <text fg={colors.text.secondary} content="Make sure you're in a git repository" />
       </box>
     );
   }
 
-  if (!stats || stats.totalCommits === 0) {
+  if (!stats || stats.totalCommits === 0 || !filteredData) {
     return (
-      <box alignItems="center" justifyContent="center" flexGrow={1}>
-        <text fg="#8B949E" content="No commits found in this repository" />
+      <box alignItems="center" justifyContent="center" flexGrow={1} backgroundColor={colors.background.primary}>
+        <text fg={colors.text.secondary} content="No commits found in this repository" />
       </box>
     );
   }
 
-  const dateRangeStr = `Weekly from ${formatDate(stats.dateRange.start)} to ${formatDate(stats.dateRange.end)}`;
-  const weeklyCommitCounts = stats.weeklyData.map((w) => w.commits);
-  const maxCommitsInWeek = Math.max(...weeklyCommitCounts, 1);
-
-  const chartLabels: string[] = [];
-  const labelInterval = Math.max(1, Math.floor(stats.weeklyData.length / 6));
-  for (let i = 0; i < stats.weeklyData.length; i += labelInterval) {
-    chartLabels.push(formatDate(stats.weeklyData[i].weekStart));
-  }
-
-  const numColumns = dimensions.width >= 180 ? 4 : dimensions.width >= 120 ? 3 : 2;
+  const sidebarWidth = 24;
+  const contentWidth = dimensions.width - sidebarWidth - 2;
+  const numColumns = contentWidth >= 150 ? 4 : contentWidth >= 100 ? 3 : 2;
   const columnWidth = `${Math.floor(100 / numColumns)}%`;
 
+  const totalCommits = filteredData.contributors.reduce((sum, c) => sum + c.commits, 0);
+  const totalAdditions = filteredData.contributors.reduce((sum, c) => sum + c.additions, 0);
+  const totalDeletions = filteredData.contributors.reduce((sum, c) => sum + c.deletions, 0);
+
   return (
-    <box flexDirection="column" flexGrow={1} backgroundColor="#010409">
-      <box
-        flexDirection="column"
-        padding={1}
-        border
-        borderColor="#30363D"
-        backgroundColor="#0D1117"
-      >
-        <box flexDirection="row" width="100%">
-          <text fg="#E6EDF3" content="Contributors" flexGrow={1} />
-          <text fg="#8B949E" content="Press 'q' to quit" />
-        </box>
-        <text fg="#8B949E" content="Contributions per week to main, excluding merge commits" />
+    <box flexDirection="column" flexGrow={1} backgroundColor={colors.background.primary}>
+      <Header
+        repoPath={repoPath}
+        contributorCount={filteredData.contributors.length}
+        totalCommits={totalCommits}
+        totalAdditions={totalAdditions}
+        totalDeletions={totalDeletions}
+        terminalWidth={dimensions.width}
+      />
+
+      <box flexDirection="row" flexGrow={1}>
+        <Sidebar
+          period={period}
+          sortBy={sortBy}
+          onPeriodChange={setPeriod}
+          onSortByChange={setSortBy}
+          selectedIndex={sidebarIndex}
+          focused={sidebarFocused}
+        />
+
+        <scrollbox
+          focused={!sidebarFocused}
+          flexGrow={1}
+          style={{
+            rootOptions: { backgroundColor: colors.background.primary },
+            contentOptions: { backgroundColor: colors.background.primary },
+          }}
+        >
+          <box flexDirection="column" padding={1}>
+             <CommitsChart
+              weeklyData={filteredData.weeklyData}
+              width={contentWidth - 6}
+              startDate={period === "all" ? stats.dateRange.start : undefined}
+              endDate={period === "all" ? new Date() : undefined}
+            />
+
+
+            {filteredData.contributors.length > 0 ? (
+              <box flexDirection="row" flexWrap="wrap">
+                {filteredData.contributors.map((contributor, i) => (
+                  <ContributorCard
+                    key={contributor.email || contributor.name}
+                    contributor={contributor}
+                    rank={i + 1}
+                    columnWidth={columnWidth}
+                  />
+                ))}
+              </box>
+            ) : (
+              <box alignItems="center" justifyContent="center" height={10}>
+                <text fg={colors.text.muted} content="No contributors for selected period" />
+              </box>
+            )}
+          </box>
+        </scrollbox>
       </box>
-
-      <scrollbox
-        focused
-        flexGrow={1}
-        style={{
-          rootOptions: { backgroundColor: "#010409" },
-          contentOptions: { backgroundColor: "#010409" },
-        }}
-      >
-        <box flexDirection="column" padding={1}>
-          <box
-            border
-            borderStyle="rounded"
-            borderColor="#30363D"
-            backgroundColor="#0D1117"
-            flexDirection="column"
-            padding={1}
-            marginBottom={1}
-          >
-            <box flexDirection="row" justifyContent="space-between">
-              <text fg="#E6EDF3" content="Commits over time" />
-              <text fg="#8B949E" content={`Max: ${maxCommitsInWeek}/week`} />
-            </box>
-            <text fg="#8B949E" content={dateRangeStr} />
-
-            <box marginTop={1} height={10}>
-              <BarChart
-                data={weeklyCommitCounts}
-                height={8}
-                width={dimensions.width - 10}
-                color="#4A9EFF"
-              />
-            </box>
-
-            <box flexDirection="row" marginTop={1}>
-              {chartLabels.map((label, i) => (
-                <text
-                  key={i}
-                  fg="#8B949E"
-                  content={label.padEnd(Math.floor((dimensions.width - 10) / chartLabels.length))}
-                />
-              ))}
-            </box>
-          </box>
-
-          <box flexDirection="row" flexWrap="wrap">
-            {stats.contributors.map((contributor, i) => (
-              <ContributorCard
-                key={contributor.email || contributor.name}
-                contributor={contributor}
-                rank={i + 1}
-                columnWidth={columnWidth}
-              />
-            ))}
-          </box>
-        </box>
-      </scrollbox>
     </box>
   );
 }
