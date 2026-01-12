@@ -43,6 +43,38 @@ bun run build
 
 Outputs a standalone executable to `dist/ggtui`.
 
+## Release Process
+
+This project uses [Changesets](https://github.com/changesets/changesets) for version management and automated releases.
+
+### Creating a Changeset
+
+When you make a change that should be included in the next release:
+
+```bash
+bun run changeset
+```
+
+This will prompt you to describe your changes and select the semver bump type (patch/minor/major).
+
+### Release Workflow
+
+1. Feature PRs should include a changeset file (created via `bun run changeset`)
+2. When PRs with changesets are merged to `main`, GitHub Actions automatically opens/updates a "Version Packages" PR
+3. When the "Version Packages" PR is merged:
+   - Version is bumped in `package.json`
+   - `CHANGELOG.md` is updated
+   - A git tag is created (e.g., `v0.0.2`)
+   - A GitHub Release is created with multi-platform binaries attached
+
+### Available Platforms
+
+Release binaries are built for:
+- **macOS**: ARM64 (`ggtui-darwin-arm64.tar.gz`) and x64 (`ggtui-darwin-x64.tar.gz`)
+- **Linux**: x64 (`ggtui-linux-x64.tar.gz`) and ARM64 (`ggtui-linux-arm64.tar.gz`)
+
+Each release includes a `SHA256SUMS` file for verification.
+
 ## Run
 
 From `git-graphs/`:

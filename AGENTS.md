@@ -278,6 +278,49 @@ If a UI region “grows” or text overlaps:
 - Avoid additional git invocations in render.
 - Keep transformations inside `useMemo`.
 
+## Release Management
+
+This project uses **Changesets** for automated versioning and releases.
+
+### Release Workflow
+
+1. **Feature development**: When working on a feature that should be released:
+   ```bash
+   bun run changeset
+   ```
+   This creates a changeset file describing your changes.
+
+2. **Merge to main**: When PRs with changesets are merged, GitHub Actions automatically:
+   - Opens/updates a "Version Packages" PR
+   - Aggregates all pending changesets
+
+3. **Release**: When the "Version Packages" PR is merged:
+   - `package.json` version is bumped
+   - `CHANGELOG.md` is updated
+   - Git tag is created (`v0.0.2`, `v0.1.0`, etc.)
+   - GitHub Release is created with multi-platform binaries
+
+### Available Commands
+
+- `bun run changeset` — Create a new changeset
+- `bun run changeset:version` — Apply changesets (bump version + update changelog)
+- `bun run changeset:tag` — Create git tags for new versions
+- `bun run release` — Full release pipeline (typecheck + build + tag)
+
+### Build Artifacts
+
+Releases include binaries for:
+- macOS: ARM64 and x64
+- Linux: x64 and ARM64
+
+Each release includes a `SHA256SUMS` file for verification.
+
+### Configuration
+
+- `.changeset/config.json` — Changesets configuration
+- `.github/workflows/release.yml` — Automated release workflow
+- `privatePackages.tag: true` — Enables tagging for this private package
+
 ## Agent Operating Guidelines (Project-Specific)
 
 - **Do not commit** unless the user explicitly requests it.
@@ -287,6 +330,7 @@ If a UI region “grows” or text overlaps:
 - After code edits:
   - Run `lsp_diagnostics` on changed files.
   - Manually run the TUI for a quick sanity check.
+- **Changesets**: When implementing features, remind the user to create a changeset if the change warrants a release.
 
 ## References
 

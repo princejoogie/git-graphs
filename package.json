@@ -1,14 +1,20 @@
 {
   "name": "git-graphs",
+  "version": "0.0.1",
   "module": "src/index.tsx",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "bun run --watch src/index.tsx",
     "build": "bun build src/index.tsx --compile --outfile dist/ggtui",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:tag": "changeset tag",
+    "release": "bun run typecheck && bun run build && bun run changeset:tag"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@types/bun": "latest"
   },
   "peerDependencies": {
