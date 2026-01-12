@@ -53,8 +53,6 @@ jobs:
         include:
           - os: macos-latest
             artifact: ggtui-darwin-arm64
-          - os: macos-12
-            artifact: ggtui-darwin-x64
           - os: ubuntu-latest
             artifact: ggtui-linux-x64
     runs-on: ${{ matrix.os }}
