@@ -52,14 +52,11 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            target: darwin-arm64
-            artifact: ggtui-darwin-arm64
-          - os: macos-13
-            target: darwin-x64
-            artifact: ggtui-darwin-x64
+            targets: darwin-arm64,darwin-x64
+            artifacts: ggtui-darwin-arm64,ggtui-darwin-x64
           - os: ubuntu-latest
-            target: linux-x64
-            artifact: ggtui-linux-x64
+            targets: linux-x64
+            artifacts: ggtui-linux-x64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repo
@@ -73,23 +70,28 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Build Binary
-        run: bun run build
-
-      - name: Rename Binary
-        run: mv dist/ggtui dist/${{ matrix.artifact }}
-
-      - name: Create Archive
+      - name: Build Binaries
         run: |
-          cd dist
-          tar -czf ${{ matrix.artifact }}.tar.gz ${{ matrix.artifact }}
-          cd ..
+          IFS=',' read -ra TARGETS <<< "${{ matrix.targets }}"
+          IFS=',' read -ra ARTIFACTS <<< "${{ matrix.artifacts }}"
+          
+          for i in "${!TARGETS[@]}"; do
+            target="${TARGETS[$i]}"
+            artifact="${ARTIFACTS[$i]}"
+            
+            echo "Building $artifact for $target"
+            bun build src/index.tsx --compile --target=bun-$target --outfile dist/$artifact
+            
+            cd dist
+            tar -czf ${artifact}.tar.gz $artifact
+            cd ..
+          done
 
-      - name: Upload Artifact
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: dist/${{ matrix.artifact }}.tar.gz
+          name: binaries-${{ matrix.os }}
+          path: dist/*.tar.gz
 
   upload-assets:
     name: Upload Release Assets
