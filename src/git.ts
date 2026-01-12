@@ -47,8 +47,15 @@ function formatWeekKey(date: Date): string {
   return getWeekStart(date).toISOString().split("T")[0];
 }
 
-function normalizeAuthorName(name: string): string {
-  return name.toLowerCase().trim();
+function normalizeContributorKey(email: string): string {
+  const normalized = email.toLowerCase().trim();
+  
+  const githubMatch = normalized.match(/^(\d+)\+.+@users\.noreply\.github\.com$/);
+  if (githubMatch) {
+    return `github:${githubMatch[1]}`;
+  }
+  
+  return normalized;
 }
 
 export async function getGitStats(repoPath: string = "."): Promise<GitStats> {
@@ -152,7 +159,7 @@ export async function getGitStats(repoPath: string = "."): Promise<GitStats> {
     weekData.additions += commit.additions;
     weekData.deletions += commit.deletions;
 
-    const contributorKey = normalizeAuthorName(commit.author);
+    const contributorKey = normalizeContributorKey(commit.email) || commit.author.toLowerCase();
     if (!contributorMap.has(contributorKey)) {
       contributorMap.set(contributorKey, {
         name: commit.author,
