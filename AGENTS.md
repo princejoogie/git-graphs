@@ -103,6 +103,14 @@ bun install
 bun run typecheck
 ```
 
+### Build
+
+```bash
+bun run build
+```
+
+Build output: `dist/ggtui`
+
 ### Run the TUI
 
 From `git-graphs/`:

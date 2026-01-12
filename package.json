@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run --watch src/index.tsx",
+    "build": "bun build src/index.tsx --compile --outfile dist/ggtui",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

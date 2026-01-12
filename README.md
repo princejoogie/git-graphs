@@ -35,6 +35,14 @@ bun install
 bun run typecheck
 ```
 
+## Build
+
+```bash
+bun run build
+```
+
+Outputs a standalone executable to `dist/ggtui`.
+
 ## Run
 
 From `git-graphs/`:
