@@ -1,5 +1,11 @@
 # git-graphs
 
+## 1.0.0
+
+### Major Changes
+
+- 80f0481: Initial public release with installation instructions and multi-platform binary distribution. Release binaries available for macOS ARM64 and Linux x64.
+
 ## 0.0.6
 
 ### Patch Changes
