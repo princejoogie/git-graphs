@@ -1,5 +1,11 @@
 # git-graphs
 
+## 0.0.3
+
+### Patch Changes
+
+- 34b784a: update release workflow
+
 ## 0.0.2
 
 ### Patch Changes
