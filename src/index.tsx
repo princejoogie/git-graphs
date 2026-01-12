@@ -1,4 +1,4 @@
-import { createCliRenderer } from "@opentui/core";
+import { createCliRenderer, type CliRenderer } from "@opentui/core";
 import { createRoot, useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { useEffect, useState, useMemo } from "react";
 import { getGitStats, type GitStats, type WeeklyData } from "./git";
@@ -15,6 +15,18 @@ import {
 import { defaultKeybinds, matchKeybind, type ParsedKey } from "./keybinds";
 
 const repoPath = process.argv[2] || ".";
+
+let cliRenderer: CliRenderer | null = null;
+
+function exitApp(exitCode: number = 0) {
+  try {
+    cliRenderer?.setTerminalTitle?.("");
+    cliRenderer?.destroy();
+  } finally {
+    process.exitCode = exitCode;
+    setTimeout(() => process.exit(exitCode), 0);
+  }
+}
 
 function filterByPeriod<T extends { weekStart: Date }>(data: T[], period: PeriodFilter): T[] {
   if (period === "all") return data;
@@ -173,7 +185,7 @@ function App() {
     };
 
     if (matchKeybind(parsedKey, defaultKeybinds.quit)) {
-      process.exit(0);
+      exitApp(0);
     }
 
     if (matchKeybind(parsedKey, defaultKeybinds.toggleSidebar)) {
@@ -301,4 +313,5 @@ function App() {
 }
 
 const renderer = await createCliRenderer();
+cliRenderer = renderer;
 createRoot(renderer).render(<App />);
