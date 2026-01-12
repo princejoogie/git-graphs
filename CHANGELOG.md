@@ -1,5 +1,11 @@
 # git-graphs
 
+## 0.0.5
+
+### Patch Changes
+
+- 24b5c8b: Use macos-12 runner for x64 builds to avoid native dependency issues with cross-compilation
+
 ## 0.0.4
 
 ### Patch Changes
