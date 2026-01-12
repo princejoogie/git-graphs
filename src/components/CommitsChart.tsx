@@ -25,7 +25,9 @@ export function CommitsChart({ weeklyData, width, startDate: startDateOverride, 
   if (weeklyData.length > 0) {
     const labelInterval = Math.max(1, Math.floor(weeklyData.length / 6));
     for (let i = 0; i < weeklyData.length; i += labelInterval) {
-      chartLabels.push(formatDate(weeklyData[i].weekStart));
+      const week = weeklyData[i];
+      if (!week) continue;
+      chartLabels.push(formatDate(week.weekStart));
     }
   }
 

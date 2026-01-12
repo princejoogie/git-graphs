@@ -1,10 +1,10 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, createElement, useContext, type ReactNode } from "react";
 
 export function createSimpleContext<T>(name: string) {
   const Context = createContext<T | null>(null);
 
   function Provider({ value, children }: { value: T; children: ReactNode }) {
-    return <Context.Provider value={value}>{children}</Context.Provider>;
+    return createElement(Context.Provider, { value }, children);
   }
 
   function useCtx(): T {

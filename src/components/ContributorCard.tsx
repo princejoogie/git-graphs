@@ -6,7 +6,7 @@ import { colors } from "../theme";
 interface ContributorCardProps {
   contributor: ContributorData;
   rank: number;
-  columnWidth: string;
+  columnWidth: `${number}%`;
 }
 
 export function ContributorCard({ contributor, rank, columnWidth }: ContributorCardProps) {

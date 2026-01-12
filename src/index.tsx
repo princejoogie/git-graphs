@@ -67,9 +67,10 @@ function addWeeks(date: Date, weeks: number): Date {
 }
 
 function padWeeklyDataToNow(weeklyData: WeeklyData[], now: Date): WeeklyData[] {
-  if (weeklyData.length === 0) return weeklyData;
+  const first = weeklyData[0];
+  if (!first) return weeklyData;
 
-  const start = getWeekStart(weeklyData[0].weekStart);
+  const start = getWeekStart(first.weekStart);
   const end = getWeekStart(now);
 
   const byKey = new Map<string, WeeklyData>();
@@ -200,10 +201,12 @@ function App() {
       } else if (matchKeybind(parsedKey, defaultKeybinds.select)) {
         if (sidebarIndex < 4) {
           const periods: PeriodFilter[] = ["all", "year", "month", "week"];
-          setPeriod(periods[sidebarIndex]);
+          const nextPeriod = periods[sidebarIndex];
+          if (nextPeriod) setPeriod(nextPeriod);
         } else {
           const sorts: SortBy[] = ["commits", "additions", "deletions"];
-          setSortBy(sorts[sidebarIndex - 4]);
+          const nextSort = sorts[sidebarIndex - 4];
+          if (nextSort) setSortBy(nextSort);
         }
       }
     }
@@ -245,7 +248,7 @@ function App() {
   const sidebarWidth = 24;
   const contentWidth = dimensions.width - sidebarWidth - 2;
   const numColumns = contentWidth >= 150 ? 4 : contentWidth >= 100 ? 3 : 2;
-  const columnWidth = `${Math.floor(100 / numColumns)}%`;
+  const columnWidth = `${Math.floor(100 / numColumns)}%` as const;
 
   const totalCommits = filteredData.contributors.reduce((sum, c) => sum + c.commits, 0);
   const totalAdditions = filteredData.contributors.reduce((sum, c) => sum + c.additions, 0);

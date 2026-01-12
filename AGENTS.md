@@ -97,6 +97,12 @@ src/
 bun install
 ```
 
+### Typecheck
+
+```bash
+bun run typecheck
+```
+
 ### Run the TUI
 
 From `git-graphs/`:

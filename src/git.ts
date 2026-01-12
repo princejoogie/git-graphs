@@ -44,7 +44,7 @@ function getWeekStart(date: Date): Date {
 }
 
 function formatWeekKey(date: Date): string {
-  return getWeekStart(date).toISOString().split("T")[0];
+  return getWeekStart(date).toISOString().slice(0, 10);
 }
 
 function normalizeContributorKey(email: string): string {
@@ -85,11 +85,19 @@ export async function getGitStats(repoPath: string = "."): Promise<GitStats> {
     }
 
     const parts = line.split("|");
-    const isCommitLine = parts.length === 4 && parts[0].length === 40 && /^[a-f0-9]+$/.test(parts[0]);
+    const hash = parts[0];
+    const author = parts[1];
+    const email = parts[2];
+    const dateStr = parts[3];
 
-    if (isCommitLine) {
+    const isCommitLine =
+      parts.length === 4 &&
+      typeof hash === "string" &&
+      hash.length === 40 &&
+      /^[a-f0-9]+$/.test(hash);
+
+    if (isCommitLine && author && email && dateStr) {
       pushCurrentCommit();
-      const [hash, author, email, dateStr] = parts;
       currentCommit = {
         hash,
         author,
@@ -101,8 +109,8 @@ export async function getGitStats(repoPath: string = "."): Promise<GitStats> {
     } else if (currentCommit && line.includes("\t")) {
       const tabParts = line.split("\t");
       if (tabParts.length >= 2) {
-        const adds = parseInt(tabParts[0], 10) || 0;
-        const dels = parseInt(tabParts[1], 10) || 0;
+        const adds = parseInt(tabParts[0] ?? "0", 10) || 0;
+        const dels = parseInt(tabParts[1] ?? "0", 10) || 0;
         currentCommit.additions = (currentCommit.additions || 0) + adds;
         currentCommit.deletions = (currentCommit.deletions || 0) + dels;
       }
@@ -124,9 +132,22 @@ export async function getGitStats(repoPath: string = "."): Promise<GitStats> {
 
   commits.sort((a, b) => a.date.getTime() - b.date.getTime());
 
+  const firstCommit = commits[0];
+  const lastCommit = commits[commits.length - 1];
+  if (!firstCommit || !lastCommit) {
+    return {
+      totalCommits: 0,
+      totalAdditions: 0,
+      totalDeletions: 0,
+      weeklyData: [],
+      contributors: [],
+      dateRange: { start: new Date(), end: new Date() },
+    };
+  }
+
   const dateRange = {
-    start: commits[0].date,
-    end: commits[commits.length - 1].date,
+    start: firstCommit.date,
+    end: lastCommit.date,
   };
 
   const weeklyMap = new Map<string, WeeklyData>();

@@ -24,7 +24,8 @@ export interface ParsedKey {
 export function matchKeybind(key: ParsedKey, bindings: string[]): boolean {
   for (const binding of bindings) {
     const parts = binding.toLowerCase().split("+");
-    const keyName = parts[parts.length - 1];
+    const keyName = parts.at(-1);
+    if (!keyName) continue;
     const needsCtrl = parts.includes("ctrl");
     const needsShift = parts.includes("shift");
     const needsMeta = parts.includes("meta");
@@ -42,8 +43,9 @@ export function matchKeybind(key: ParsedKey, bindings: string[]): boolean {
 }
 
 export function formatKeybind(bindings: string[]): string {
-  if (bindings.length === 0) return "";
-  return bindings[0]
+  const first = bindings[0];
+  if (!first) return "";
+  return first
     .split("+")
     .map((part) => {
       if (part === "ctrl") return "^";

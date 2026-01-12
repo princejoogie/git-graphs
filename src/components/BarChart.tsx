@@ -64,17 +64,17 @@ export function BarChart({
     const rowSegments: BarSegment[] = [];
 
     for (let i = 0; i < data.length; i++) {
-      const value = data[i];
+      const value = data[i] ?? 0;
       const normalizedHeight = (value / maxValue) * height;
       const fullBlocks = Math.floor(normalizedHeight);
       const partialBlock = normalizedHeight - fullBlocks;
 
       let char: string;
       if (row < fullBlocks) {
-        char = BLOCK_CHARS[8];
+        char = BLOCK_CHARS[8] ?? "█";
       } else if (row === fullBlocks && partialBlock > 0) {
         const partialIndex = Math.round(partialBlock * 8);
-        char = BLOCK_CHARS[Math.min(partialIndex, 8)];
+        char = BLOCK_CHARS[Math.min(partialIndex, 8)] ?? " ";
       } else {
         char = " ";
       }
@@ -128,10 +128,10 @@ export function MiniBarChart({ data, width = 20, color = colors.chart.primary }:
 
   for (let col = 0; col < width; col++) {
     const dataIndex = Math.floor((col / width) * data.length);
-    const value = data[dataIndex];
+    const value = data[dataIndex] ?? 0;
     const normalized = value / maxValue;
     const blockIndex = Math.round(normalized * 8);
-    result += BLOCK_CHARS[Math.min(blockIndex, 8)];
+    result += BLOCK_CHARS[Math.min(blockIndex, 8)] ?? " ";
   }
 
   return <text fg={color} content={result} />;

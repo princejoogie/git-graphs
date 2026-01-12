@@ -29,6 +29,12 @@ Given a repository path, `git-graphs`:
 bun install
 ```
 
+## Typecheck
+
+```bash
+bun run typecheck
+```
+
 ## Run
 
 From `git-graphs/`:
