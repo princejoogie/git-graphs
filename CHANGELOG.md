@@ -1,5 +1,11 @@
 # git-graphs
 
+## 0.0.6
+
+### Patch Changes
+
+- d6984fc: Remove macos-12 runner from CI workflow, keeping only macos-latest (ARM64) and ubuntu-latest (x64) builds
+
 ## 0.0.5
 
 ### Patch Changes
