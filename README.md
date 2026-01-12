@@ -17,13 +17,53 @@ Given a repository path, `git-graphs`:
   - A "Commits over time" weekly bar chart
   - Contributor cards (ranked) with a mini sparkline
 
-## Requirements
+## Installation
 
+### From GitHub Releases (Recommended)
+
+Download the latest release for your platform:
+
+#### macOS (ARM64)
+```bash
+# Download the latest release
+curl -L https://github.com/princejoogie/git-graphs/releases/latest/download/ggtui-darwin-arm64.tar.gz -o ggtui.tar.gz
+
+# Extract
+tar -xzf ggtui.tar.gz
+
+# Move to PATH
+sudo mv ggtui-darwin-arm64 /usr/local/bin/ggtui
+
+# Make executable
+sudo chmod +x /usr/local/bin/ggtui
+
+# Verify installation
+ggtui --help
+```
+
+#### Linux (x64)
+```bash
+# Download the latest release
+curl -L https://github.com/princejoogie/git-graphs/releases/latest/download/ggtui-linux-x64.tar.gz -o ggtui.tar.gz
+
+# Extract
+tar -xzf ggtui.tar.gz
+
+# Move to PATH
+sudo mv ggtui-linux-x64 /usr/local/bin/ggtui
+
+# Make executable
+sudo chmod +x /usr/local/bin/ggtui
+
+# Verify installation
+ggtui --help
+```
+
+### From Source
+
+Requirements:
 - **Bun** installed: https://bun.sh
 - **git** available in PATH
-- A target directory that is a valid git repository
-
-## Install
 
 ```bash
 bun install
