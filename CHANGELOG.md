@@ -1,0 +1,7 @@
+# git-graphs
+
+## 0.0.2
+
+### Patch Changes
+
+- 9a88c3e: Initial release of ggtui - GitHub-style contribution graphs for local git repositories in your terminal
